@@ -74,7 +74,7 @@ class SetDuplicateItemChecker(Checker):
             else:
                 seen_values.add(element.value)
 
-class Unused_Variable_In_Scope(Checker):
+class Unused_Variable_In_Scope_Checker(Checker):
     # checks if any variables are unused in a node's scope.
 
     def __init__(self, issue_code):
@@ -85,7 +85,7 @@ class Unused_Variable_In_Scope(Checker):
         if thats found to be used, its value is turned to False.
         '''
 
-        self.unused_items = {}
+        self.unused_names = {}
 
         # name_nodes holds the first occurences of variables.
         self.name_nodes = {}
@@ -94,7 +94,7 @@ class Unused_Variable_In_Scope(Checker):
         # find all nodes that only exist in 'Store' context
         var_name = node.id
 
-        if isinstance(node.ctx, asr.Store):
+        if isinstance(node.ctx, ast.Store):
             # if its a new name, save the node for latter 
             if var_name not in self.name_nodes:
                 self.name_nodes[var_name] = node
@@ -110,21 +110,21 @@ class Unused_Variable_In_Scope(Checker):
 class Unused_Variable_Checker(Checker):
     # find unused variables in  the local scope of this node.
     def check_for_unused_variables(self, node):
-        visitor = UnusedVariable_InScopeChecker(self, issue_code)
+        visitor =Unused_Variable_In_Scope_Checker(self.issue_code)
         visitor.visit(node)
 
     # Now the visitor has collected data, and we can use that data
-    for name, unused in visitor.unused_names.items():
-        if unused:
-            node = visitor.name_nodes[name]
-            self.violations.add(Violation(node, f"Unused variable: {name}"))
+        for name, unused in visitor.unused_names.items():
+            if unused:
+                node = visitor.name_nodes[name]
+                self.violations.add(Violation(node, f"Unused variable: {name}"))
 
     def visit_Modules(self, node):
         self.check_for_unused_variables(node)
         super().generic_visit(node)
 
     def visit_ClassDef(self, node):
-        self.check_for_unused_variable(node)
+        self.check_for_unused_variables(node)
         super().generic_visit(node)
 
     def visit_FunctionDef(self, node):
@@ -137,6 +137,7 @@ def main():
 
     linter = Linter()
     linter.checkers.add(SetDuplicateItemChecker(issue_code="W001"))
+    linter.checkers.add(Unused_Variable_Checker(issue_code="W002"))
 
     linter.run(source_path)
 
